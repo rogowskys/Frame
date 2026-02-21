@@ -1,0 +1,20 @@
+# Systemd service file for Vinyl Collection App
+# Copy this to /etc/systemd/system/vinyl-collection.service
+# Then run: sudo systemctl enable vinyl-collection.service
+
+[Unit]
+Description=Vinyl Collection Touchscreen App
+After=graphical.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/vinyl-collection
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=/home/pi/.Xauthority"
+ExecStart=/home/pi/vinyl-collection/start.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=graphical.target

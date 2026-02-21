@@ -1,0 +1,180 @@
+"""
+Discogs API Service
+Handles all interactions with the Discogs API
+"""
+import discogs_client
+import os
+import requests
+from io import BytesIO
+from PIL import Image
+import random
+
+
+class DiscogsService:
+    def __init__(self, user_token, username, cache_dir='./cache'):
+        self.client = discogs_client.Client('VinylCollectionApp/1.0', user_token=user_token)
+        self.username = username
+        self.cache_dir = cache_dir
+        self.user = None
+        self.collection = []
+        
+        # Create cache directory if it doesn't exist
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+    
+    def authenticate(self):
+        """Authenticate and get user info"""
+        try:
+            self.user = self.client.identity()
+            return True
+        except Exception as e:
+            print(f"Authentication error: {e}")
+            return False
+    
+    def get_collection(self, page=1, per_page=50):
+        """Fetch user's vinyl collection"""
+        try:
+            if not self.user:
+                self.authenticate()
+            
+            collection = self.client.user(self.username).collection_folders[0].releases
+            items = []
+            
+            for release in collection:
+                items.append({
+                    'id': release.release.id,
+                    'title': release.release.title,
+                    'artist': release.release.artists[0].name if release.release.artists else 'Unknown',
+                    'year': release.release.year if hasattr(release.release, 'year') else 'N/A',
+                    'thumb': release.release.thumb if hasattr(release.release, 'thumb') else None,
+                    'cover': release.release.images[0]['uri'] if release.release.images else None,
+                    'genres': release.release.genres if hasattr(release.release, 'genres') else [],
+                    'styles': release.release.styles if hasattr(release.release, 'styles') else [],
+                })
+            
+            self.collection = items
+            return items
+        except Exception as e:
+            print(f"Error fetching collection: {e}")
+            return []
+    
+    def get_release_details(self, release_id):
+        """Get detailed information about a specific release"""
+        try:
+            release = self.client.release(release_id)
+            
+            tracklist = []
+            if hasattr(release, 'tracklist'):
+                for track in release.tracklist:
+                    tracklist.append({
+                        'position': track.position,
+                        'title': track.title,
+                        'duration': track.duration
+                    })
+            
+            return {
+                'id': release.id,
+                'title': release.title,
+                'artist': release.artists[0].name if release.artists else 'Unknown',
+                'year': release.year if hasattr(release, 'year') else 'N/A',
+                'cover': release.images[0]['uri'] if release.images else None,
+                'genres': release.genres if hasattr(release, 'genres') else [],
+                'styles': release.styles if hasattr(release, 'styles') else [],
+                'tracklist': tracklist,
+                'label': release.labels[0].name if release.labels else 'Unknown',
+                'country': release.country if hasattr(release, 'country') else 'Unknown',
+                'notes': release.notes if hasattr(release, 'notes') else '',
+            }
+        except Exception as e:
+            print(f"Error fetching release details: {e}")
+            return None
+    
+    def search_collection(self, query):
+        """Search within user's collection"""
+        query_lower = query.lower()
+        results = []
+        
+        for item in self.collection:
+            if (query_lower in item['title'].lower() or 
+                query_lower in item['artist'].lower() or
+                any(query_lower in genre.lower() for genre in item['genres'])):
+                results.append(item)
+        
+        return results
+    
+    def get_random_by_mood(self, mood=None):
+        """Get random albums based on mood/genre"""
+        # Mood to genre/style mapping
+        mood_map = {
+            'energetic': ['Rock', 'Punk', 'Electronic', 'Dance', 'Hip Hop'],
+            'chill': ['Jazz', 'Ambient', 'Classical', 'Folk', 'Soul'],
+            'melancholic': ['Blues', 'Folk', 'Classical', 'Indie'],
+            'happy': ['Pop', 'Funk', 'Soul', 'Disco'],
+            'dark': ['Metal', 'Industrial', 'Gothic', 'Post-Punk'],
+            'groovy': ['Funk', 'Soul', 'Disco', 'R&B'],
+        }
+        
+        if mood and mood.lower() in mood_map:
+            # Filter by mood
+            matching = []
+            target_genres = mood_map[mood.lower()]
+            
+            for item in self.collection:
+                item_genres = item['genres'] + item['styles']
+                if any(genre in target_genres for genre in item_genres):
+                    matching.append(item)
+            
+            if matching:
+                return random.choice(matching)
+        
+        # Random from entire collection
+        if self.collection:
+            return random.choice(self.collection)
+        
+        return None
+    
+    def get_random_by_genre(self, genre):
+        """Get random album by specific genre"""
+        matching = []
+        genre_lower = genre.lower()
+        
+        for item in self.collection:
+            item_genres = [g.lower() for g in (item['genres'] + item['styles'])]
+            if genre_lower in item_genres:
+                matching.append(item)
+        
+        if matching:
+            return random.choice(matching)
+        
+        return None
+    
+    def get_all_genres(self):
+        """Get all unique genres from collection"""
+        genres = set()
+        for item in self.collection:
+            genres.update(item['genres'])
+            genres.update(item['styles'])
+        return sorted(list(genres))
+    
+    def download_cover(self, url, release_id):
+        """Download and cache album cover"""
+        if not url:
+            return None
+        
+        cache_path = os.path.join(self.cache_dir, f"{release_id}.jpg")
+        
+        # Return cached version if exists
+        if os.path.exists(cache_path):
+            return cache_path
+        
+        # Download cover
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                img = Image.open(BytesIO(response.content))
+                img.save(cache_path, 'JPEG')
+                return cache_path
+        except Exception as e:
+            print(f"Error downloading cover: {e}")
+        
+        return None

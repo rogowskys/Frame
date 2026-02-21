@@ -1,0 +1,4 @@
+kivy==2.3.0
+python3-discogs-client==2.7
+Pillow==10.2.0
+requests==2.31.0
