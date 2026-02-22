@@ -7,10 +7,11 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.image import AsyncImage
+from kivy.uix.image import Image
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
 from kivy.animation import Animation
+import os
 
 
 class MoodButton(Button):
@@ -286,9 +287,10 @@ class JukeboxScreen(Screen):
         
         cover_box.bind(pos=self.update_cover_bg, size=self.update_cover_bg)
         
-        if album.get('cover') or album.get('thumb'):
-            cover_img = AsyncImage(
-                source=album.get('cover') or album.get('thumb'),
+        cache_path = f"./cache/{album['id']}.jpg"
+        if os.path.exists(cache_path):
+            cover_img = Image(
+                source=cache_path,
                 allow_stretch=True,
                 keep_ratio=True
             )

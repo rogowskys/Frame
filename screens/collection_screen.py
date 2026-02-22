@@ -7,10 +7,11 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.image import AsyncImage
+from kivy.uix.image import Image
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
 from kivy.clock import Clock
+import os
 
 
 class AlbumCard(BoxLayout):
@@ -38,9 +39,11 @@ class AlbumCard(BoxLayout):
             background_color=(0.2, 0.2, 0.25, 1)
         )
         
-        if album_data.get('thumb'):
-            cover_img = AsyncImage(
-                source=album_data['thumb'],
+        # Use cached image only
+        cache_path = f"./cache/{album_data['id']}.jpg"
+        if os.path.exists(cache_path):
+            cover_img = Image(
+                source=cache_path,
                 allow_stretch=True,
                 keep_ratio=True
             )
@@ -79,6 +82,23 @@ class AlbumCard(BoxLayout):
         info_layout.add_widget(title)
         info_layout.add_widget(artist)
         self.add_widget(info_layout)
+
+class CollectionPager(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'horizontal'
+        self.size_hint = (1, None)
+        self.height = dp(50)
+        self.spacing = dp(10)
+        
+        self.prev_btn = Button(text='PREV', size_hint=(None, 1), width=dp(100), background_normal='', background_color=(0.2,0.2,0.3,1))
+        self.next_btn = Button(text='NEXT', size_hint=(None, 1), width=dp(100), background_normal='', background_color=(0.2,0.2,0.3,1))
+        self.page_label = Label(text='Page 1/1', halign='center')
+        self.page_label.bind(size=self.page_label.setter('text_size'))
+
+        self.add_widget(self.prev_btn)
+        self.add_widget(self.page_label)
+        self.add_widget(self.next_btn)
     
     def update_bg(self, instance, value):
         self.bg.pos = instance.pos
@@ -140,6 +160,10 @@ class CollectionScreen(Screen):
         scroll.add_widget(self.albums_grid)
         layout.add_widget(scroll)
         
+        # Pager
+        self.pager = CollectionPager()
+        layout.add_widget(self.pager)
+        
         self.add_widget(layout)
     
     def update_bg(self, instance, value):
@@ -149,15 +173,35 @@ class CollectionScreen(Screen):
     def on_pre_enter(self):
         """Load albums when entering screen"""
         Clock.schedule_once(self.load_albums, 0.1)
+        
+    def _setup_pagination(self):
+        from kivy.app import App
+        app = App.get_running_app()
+        total = len(app.discogs.collection) if app.discogs and app.discogs.collection else 0
+        self.per_page = 16
+        self.current_page = 1
+        self.total_pages = max(1, (total + self.per_page - 1) // self.per_page)
+
+        # wire pager buttons
+        self.pager.prev_btn.bind(on_press=lambda *_: self.change_page(-1))
+        self.pager.next_btn.bind(on_press=lambda *_: self.change_page(1))
+        self._update_pager_label()
     
     def load_albums(self, dt):
         """Load and display albums"""
         self.albums_grid.clear_widgets()
-        
         from kivy.app import App
         app = App.get_running_app()
         if app.discogs and app.discogs.collection:
-            for album in app.discogs.collection:
+            # Setup pagination state
+            if not hasattr(self, 'per_page'):
+                self._setup_pagination()
+
+            # Render current page
+            start = (self.current_page - 1) * self.per_page
+            end = start + self.per_page
+            page_items = app.discogs.collection[start:end]
+            for album in page_items:
                 card = AlbumCard(album, self.show_detail)
                 self.albums_grid.add_widget(card)
     
@@ -165,6 +209,21 @@ class CollectionScreen(Screen):
         """Called when collection is loaded"""
         if self.manager.current == 'collection':
             Clock.schedule_once(self.load_albums, 0.1)
+        else:
+            # Ensure pagination updated even when not on screen
+            try:
+                self._setup_pagination()
+            except Exception:
+                pass
+
+    def change_page(self, delta):
+        """Change current page and re-render"""
+        self.current_page = max(1, min(self.total_pages, self.current_page + delta))
+        self._update_pager_label()
+        Clock.schedule_once(self.load_albums, 0.05)
+
+    def _update_pager_label(self):
+        self.pager.page_label.text = f'Page {self.current_page}/{self.total_pages}'
     
     def show_detail(self, album_data):
         """Navigate to detail screen"""

@@ -10,6 +10,8 @@ from PIL import Image
 import random
 import json
 from datetime import datetime, timedelta
+import time
+import threading
 
 
 class DiscogsService:
@@ -240,14 +242,82 @@ class DiscogsService:
         if os.path.exists(cache_path):
             return cache_path
         
-        # Download cover
-        try:
-            response = requests.get(url, timeout=10)
-            if response.status_code == 200:
-                img = Image.open(BytesIO(response.content))
-                img.save(cache_path, 'JPEG')
-                return cache_path
-        except Exception as e:
-            print(f"Error downloading cover: {e}")
+        # Download cover with retry and rate limiting
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                time.sleep(0.2)  # Rate limit: 5 per second max
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200:
+                    img = Image.open(BytesIO(response.content))
+                    img.save(cache_path, 'JPEG')
+                    return cache_path
+                elif response.status_code == 429:
+                    wait_time = (attempt + 1) * 2
+                    print(f"Rate limited, waiting {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    print(f"Error downloading cover {release_id}: {e}")
         
         return None
+    
+    def download_all_covers(self, progress_callback=None, prewarm_count=20):
+        """Download all album covers in background with rate limiting.
+
+        - Pre-warm the first `prewarm_count` covers synchronously (fast startup UX)
+        - Continue downloading the rest in order
+        - Calls `progress_callback(current, total, downloaded, skipped)` periodically
+        """
+        total = len(self.collection)
+        downloaded = 0
+        skipped = 0
+
+        # Helper to report progress safely
+        def _report(cur):
+            if progress_callback:
+                try:
+                    progress_callback(cur, total, downloaded, skipped)
+                except Exception:
+                    pass
+
+        # Pre-warm first N covers (attempt up to prewarm_count)
+        prewarm_count = min(prewarm_count, total)
+        for i in range(prewarm_count):
+            album = self.collection[i]
+            url = album.get('cover') or album.get('thumb')
+            release_id = album['id']
+            cache_path = os.path.join(self.cache_dir, f"{release_id}.jpg")
+            if os.path.exists(cache_path):
+                skipped += 1
+            else:
+                result = self.download_cover(url, release_id)
+                if result:
+                    downloaded += 1
+            _report(i + 1)
+
+        # Background - remaining covers
+        for i in range(prewarm_count, total):
+            album = self.collection[i]
+            url = album.get('cover') or album.get('thumb')
+            release_id = album['id']
+
+            cache_path = os.path.join(self.cache_dir, f"{release_id}.jpg")
+            if os.path.exists(cache_path):
+                skipped += 1
+            else:
+                result = self.download_cover(url, release_id)
+                if result:
+                    downloaded += 1
+
+            # Report every 10 items to avoid UI spam
+            if (i + 1) % 10 == 0:
+                _report(i + 1)
+
+        # Final report
+        _report(total)
+
+        print(f"✓ Cover download complete: {downloaded} new, {skipped} cached")
+        return downloaded, skipped

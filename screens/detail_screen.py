@@ -6,10 +6,11 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.image import AsyncImage
+from kivy.uix.image import Image
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
 from kivy.clock import Clock
+import os
 
 
 class DetailScreen(Screen):
@@ -89,9 +90,10 @@ class DetailScreen(Screen):
         
         # Cover image
         cover_container = BoxLayout(size_hint=(None, 1), width=dp(200))
-        if self.current_album.get('cover') or self.current_album.get('thumb'):
-            cover_img = AsyncImage(
-                source=self.current_album.get('cover') or self.current_album.get('thumb'),
+        cache_path = f"./cache/{self.current_album['id']}.jpg"
+        if os.path.exists(cache_path):
+            cover_img = Image(
+                source=cache_path,
                 allow_stretch=True,
                 keep_ratio=True
             )

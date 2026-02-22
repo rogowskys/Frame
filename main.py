@@ -106,6 +106,42 @@ class VinylApp(App):
         for screen in self.root.screens:
             if hasattr(screen, 'on_collection_loaded'):
                 screen.on_collection_loaded()
+        
+        # Start downloading covers in background
+        Clock.schedule_once(self.download_covers_background, 1.0)
+    
+    def download_covers_background(self, dt):
+        """Download all album covers in background"""
+        def download_task():
+            from kivy.clock import Clock
+            def progress(current, total, downloaded, skipped):
+                # Schedule UI update on main thread
+                def _update(dt):
+                    from kivy.app import App
+                    app = App.get_running_app()
+                    try:
+                        home = app.root.get_screen('home')
+                        home.status_label.text = f'Downloading covers: {current}/{total} ({downloaded} new, {skipped} cached)'
+                    except Exception:
+                        pass
+                Clock.schedule_once(_update, 0)
+
+            # Prewarm 24 covers for quick startup, then continue
+            self.discogs.download_all_covers(progress_callback=progress, prewarm_count=24)
+
+            # Final UI completion message
+            def _done(dt):
+                from kivy.app import App
+                app = App.get_running_app()
+                try:
+                    home = app.root.get_screen('home')
+                    home.status_label.text = f'✓ Covers cached'
+                except Exception:
+                    pass
+            Clock.schedule_once(_done, 0)
+
+        thread = threading.Thread(target=download_task, daemon=True)
+        thread.start()
     
     def on_keyboard(self, window, key, scancode, codepoint, modifier):
         """Emergency exit: ESC + Shift + Q"""
