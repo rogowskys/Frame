@@ -35,6 +35,7 @@ class VinylApp(App):
         Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
         Config.set('graphics', 'window_state', 'maximized')
         Config.set('kivy', 'exit_on_escape', '0')  # Disable ESC to exit
+        Config.set('kivy', 'keyboard_mode', 'system')  # Enable virtual keyboard
         
         # Set window size for Raspberry Pi display
         Window.size = (800, 480)

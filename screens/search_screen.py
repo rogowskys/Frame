@@ -72,9 +72,11 @@ class SearchScreen(Screen):
             background_color=(0.2, 0.2, 0.25, 1),
             foreground_color=(1, 1, 1, 1),
             cursor_color=(1, 0.8, 0.2, 1),
-            padding=[dp(15), dp(15)]
+            padding=[dp(15), dp(15)],
+            keyboard_mode='managed'
         )
         self.search_input.bind(text=self.on_search_text)
+        self.search_input.bind(focus=self.on_search_focus)
         
         search_btn = Button(
             text='SEARCH',
@@ -120,6 +122,11 @@ class SearchScreen(Screen):
         self.bg_rect.pos = instance.pos
         self.bg_rect.size = instance.size
     
+    def on_search_focus(self, instance, value):
+        """Handle focus change to show/hide keyboard"""
+        if value:  # Gained focus
+            instance.focus = True
+    
     def on_search_text(self, instance, value):
         """Auto-search as user types (with debounce)"""
         if hasattr(self, '_search_clock'):
@@ -139,7 +146,8 @@ class SearchScreen(Screen):
         
         self.results_grid.clear_widgets()
         
-        app = self.manager.get_screen('home').get_root_window().children[0].app
+        from kivy.app import App
+        app = App.get_running_app()
         if not app.discogs or not app.discogs.collection:
             self.results_label.text = 'Collection not loaded'
             return
@@ -159,6 +167,11 @@ class SearchScreen(Screen):
         detail_screen = self.manager.get_screen('detail')
         detail_screen.set_album(album_data)
         self.manager.current = 'detail'
+    
+    def on_enter(self):
+        """Called when entering the screen"""
+        # Auto-focus search input to show keyboard
+        Clock.schedule_once(lambda dt: setattr(self.search_input, 'focus', True), 0.1)
     
     def on_collection_loaded(self):
         """Called when collection is loaded"""

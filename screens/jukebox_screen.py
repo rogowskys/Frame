@@ -186,7 +186,8 @@ class JukeboxScreen(Screen):
     
     def load_genres(self):
         """Load and display available genres"""
-        app = self.manager.get_screen('home').get_root_window().children[0].app
+        from kivy.app import App
+        app = App.get_running_app()
         if not app.discogs or not app.discogs.collection:
             return
         
@@ -221,7 +222,8 @@ class JukeboxScreen(Screen):
     
     def pick_by_mood(self, mood):
         """Pick random album by mood"""
-        app = self.manager.get_screen('home').get_root_window().children[0].app
+        from kivy.app import App
+        app = App.get_running_app()
         if not app.discogs:
             return
         
@@ -231,7 +233,8 @@ class JukeboxScreen(Screen):
     
     def pick_by_genre(self, genre):
         """Pick random album by genre"""
-        app = self.manager.get_screen('home').get_root_window().children[0].app
+        from kivy.app import App
+        app = App.get_running_app()
         if not app.discogs:
             return
         
@@ -241,7 +244,8 @@ class JukeboxScreen(Screen):
     
     def pick_random(self):
         """Pick completely random album"""
-        app = self.manager.get_screen('home').get_root_window().children[0].app
+        from kivy.app import App
+        app = App.get_running_app()
         if not app.discogs:
             return
         

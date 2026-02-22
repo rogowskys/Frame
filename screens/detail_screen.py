@@ -163,7 +163,8 @@ class DetailScreen(Screen):
         self.content_layout.add_widget(top_section)
         
         # Fetch and display detailed information
-        app = self.manager.get_screen('home').get_root_window().children[0].app
+        from kivy.app import App
+        app = App.get_running_app()
         if app.discogs:
             Clock.schedule_once(lambda dt: self.load_full_details(app.discogs), 0.2)
     

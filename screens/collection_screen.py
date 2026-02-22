@@ -154,7 +154,8 @@ class CollectionScreen(Screen):
         """Load and display albums"""
         self.albums_grid.clear_widgets()
         
-        app = self.manager.get_screen('home').get_root_window().children[0].app
+        from kivy.app import App
+        app = App.get_running_app()
         if app.discogs and app.discogs.collection:
             for album in app.discogs.collection:
                 card = AlbumCard(album, self.show_detail)
