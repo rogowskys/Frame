@@ -97,7 +97,7 @@ class DetailScreen(Screen):
             )
             cover_container.add_widget(cover_img)
         else:
-            placeholder = Label(text='🎵', font_size=dp(80))
+            placeholder = Label(text='♪', font_size=dp(80))
             cover_container.add_widget(placeholder)
         
         top_section.add_widget(cover_container)

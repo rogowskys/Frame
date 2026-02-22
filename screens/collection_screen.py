@@ -46,7 +46,7 @@ class AlbumCard(BoxLayout):
             )
             cover_btn.add_widget(cover_img)
         else:
-            placeholder = Label(text='🎵', font_size=dp(40))
+            placeholder = Label(text='♪', font_size=dp(40))
             cover_btn.add_widget(placeholder)
         
         cover_btn.bind(on_press=lambda x: self.callback(album_data))

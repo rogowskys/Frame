@@ -77,7 +77,7 @@ class SearchScreen(Screen):
         self.search_input.bind(text=self.on_search_text)
         
         search_btn = Button(
-            text='🔍 SEARCH',
+            text='SEARCH',
             size_hint=(0.25, 1),
             background_normal='',
             background_color=(0.3, 0.5, 0.7, 1),

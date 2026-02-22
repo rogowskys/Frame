@@ -9,3 +9,4 @@ cache/
 venv/
 .env
 .DS_Store
+config.ini

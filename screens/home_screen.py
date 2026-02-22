@@ -39,14 +39,14 @@ class HomeScreen(Screen):
         layout.bind(pos=self.update_bg, size=self.update_bg)
         
         # Title
-        title = Label(
+        self.title_label = Label(
             text='[b]VINYL COLLECTION[/b]',
             markup=True,
-            font_size=dp(36),
+            font_size=dp(24),
             size_hint=(1, 0.2),
             color=(1, 0.8, 0.2, 1)
         )
-        layout.add_widget(title)
+        layout.add_widget(self.title_label)
         
         # Status label
         self.status_label = Label(
@@ -60,15 +60,15 @@ class HomeScreen(Screen):
         # Menu buttons
         buttons_layout = GridLayout(cols=1, spacing=dp(15), size_hint=(1, 0.7))
         
-        browse_btn = MenuButton(text='📚 BROWSE COLLECTION')
+        browse_btn = MenuButton(text='BROWSE COLLECTION')
         browse_btn.bind(on_press=self.goto_collection)
         buttons_layout.add_widget(browse_btn)
         
-        search_btn = MenuButton(text='🔍 SEARCH')
+        search_btn = MenuButton(text='SEARCH')
         search_btn.bind(on_press=self.goto_search)
         buttons_layout.add_widget(search_btn)
         
-        jukebox_btn = MenuButton(text='🎲 JUKEBOX MODE')
+        jukebox_btn = MenuButton(text='JUKEBOX MODE')
         jukebox_btn.bind(on_press=self.goto_jukebox)
         buttons_layout.add_widget(jukebox_btn)
         
@@ -85,9 +85,11 @@ class HomeScreen(Screen):
         app = self.manager.get_screen('home').get_root_window().children[0].app
         if app.discogs and app.discogs.collection:
             count = len(app.discogs.collection)
-            self.status_label.text = f'✓ {count} records loaded'
+            username = app.discogs.username
+            self.title_label.text = f'[b]{username.upper()}\'S VINYL COLLECTION[/b]'
+            self.status_label.text = f'> {count} records loaded'
         else:
-            self.status_label.text = '⚠ No records found'
+            self.status_label.text = '! No records found'
     
     def goto_collection(self, instance):
         self.manager.current = 'collection'

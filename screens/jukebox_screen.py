@@ -57,7 +57,7 @@ class JukeboxScreen(Screen):
         back_btn.bind(on_press=self.go_back)
         
         title = Label(
-            text='[b]🎲 JUKEBOX MODE[/b]',
+            text='[b]JUKEBOX MODE[/b]',
             markup=True,
             font_size=dp(24),
             color=(1, 0.8, 0.2, 1)
@@ -111,12 +111,12 @@ class JukeboxScreen(Screen):
         )
         
         moods = [
-            ('energetic', '⚡', (0.9, 0.3, 0.3, 1)),
-            ('chill', '😌', (0.3, 0.6, 0.8, 1)),
-            ('melancholic', '🌧️', (0.4, 0.4, 0.6, 1)),
-            ('happy', '😊', (0.9, 0.8, 0.2, 1)),
-            ('dark', '🌙', (0.3, 0.2, 0.4, 1)),
-            ('groovy', '🕺', (0.8, 0.4, 0.8, 1)),
+            ('energetic', '*', (0.9, 0.3, 0.3, 1)),
+            ('chill', '~', (0.3, 0.6, 0.8, 1)),
+            ('melancholic', '-', (0.4, 0.4, 0.6, 1)),
+            ('happy', '+', (0.9, 0.8, 0.2, 1)),
+            ('dark', '•', (0.3, 0.2, 0.4, 1)),
+            ('groovy', '♪', (0.8, 0.4, 0.8, 1)),
         ]
         
         for mood, emoji, color in moods:
@@ -128,7 +128,7 @@ class JukeboxScreen(Screen):
         
         # Random button
         random_btn = Button(
-            text='🎲 SURPRISE ME!',
+            text='SURPRISE ME!',
             size_hint=(1, None),
             height=dp(60),
             background_normal='',
@@ -290,7 +290,7 @@ class JukeboxScreen(Screen):
             )
             cover_box.add_widget(cover_img)
         else:
-            placeholder = Label(text='🎵', font_size=dp(80))
+            placeholder = Label(text='♪', font_size=dp(80))
             cover_box.add_widget(placeholder)
         
         album_container.add_widget(cover_box)

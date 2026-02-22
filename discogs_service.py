@@ -8,6 +8,8 @@ import requests
 from io import BytesIO
 from PIL import Image
 import random
+import json
+from datetime import datetime, timedelta
 
 
 class DiscogsService:
@@ -31,35 +33,98 @@ class DiscogsService:
             print(f"Authentication error: {e}")
             return False
     
-    def get_collection(self, page=1, per_page=50, max_items=None):
-        """Fetch user's vinyl collection"""
+    def get_collection(self, page=1, per_page=100, max_items=None, force_refresh=False):
+        """Fetch user's vinyl collection (with caching)"""
+        cache_file = os.path.join(self.cache_dir, 'collection.json')
+        cache_age_hours = 24  # Refresh cache after 24 hours
+        
+        # Try to load from cache first
+        if not force_refresh and os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cache_data = json.load(f)
+                    cache_time = datetime.fromisoformat(cache_data['timestamp'])
+                    age = datetime.now() - cache_time
+                    
+                    if age < timedelta(hours=cache_age_hours):
+                        print(f"Loading collection from cache ({len(cache_data['items'])} records)")
+                        self.collection = cache_data['items']
+                        return self.collection
+                    else:
+                        print(f"Cache is {age.seconds//3600}h old, refreshing...")
+            except Exception as e:
+                print(f"Cache read error: {e}, fetching fresh data...")
+        
+        # Fetch from API using direct requests (faster than iterating)
         try:
             if not self.user:
                 self.authenticate()
             
-            collection = self.client.user(self.username).collection_folders[0].releases
+            print("Fetching collection from Discogs API...")
             items = []
+            page = 1
+            total_pages = None
             
-            count = 0
-            for release in collection:
-                items.append({
-                    'id': release.release.id,
-                    'title': release.release.title,
-                    'artist': release.release.artists[0].name if release.release.artists else 'Unknown',
-                    'year': release.release.year if hasattr(release.release, 'year') else 'N/A',
-                    'thumb': release.release.thumb if hasattr(release.release, 'thumb') else None,
-                    'cover': release.release.images[0]['uri'] if release.release.images else None,
-                    'genres': release.release.genres if hasattr(release.release, 'genres') else [],
-                    'styles': release.release.styles if hasattr(release.release, 'styles') else [],
-                })
-                count += 1
-                if count % 10 == 0:
-                    print(f"Loaded {count} records...")
-                if max_items and count >= max_items:
+            while True:
+                # Use direct API call for pagination
+                url = f"https://api.discogs.com/users/{self.username}/collection/folders/0/releases"
+                params = {
+                    'page': page,
+                    'per_page': per_page,
+                    'token': self.client.user_token
+                }
+                
+                response = requests.get(url, params=params, timeout=30)
+                if response.status_code != 200:
+                    print(f"API error: {response.status_code}")
+                    break
+                
+                data = response.json()
+                
+                if total_pages is None:
+                    total_pages = data['pagination']['pages']
+                    total_items = data['pagination']['items']
+                    print(f"Fetching {total_items} records across {total_pages} pages...")
+                
+                # Process releases from this page
+                for item in data['releases']:
+                    basic_info = item['basic_information']
+                    items.append({
+                        'id': basic_info['id'],
+                        'title': basic_info['title'],
+                        'artist': basic_info['artists'][0]['name'] if basic_info.get('artists') else 'Unknown',
+                        'year': basic_info.get('year', 'N/A'),
+                        'thumb': basic_info.get('thumb', None),
+                        'cover': basic_info['cover_image'] if basic_info.get('cover_image') else None,
+                        'genres': basic_info.get('genres', []),
+                        'styles': basic_info.get('styles', []),
+                    })
+                
+                print(f"Loaded page {page}/{total_pages} ({len(items)} records so far)")
+                
+                if max_items and len(items) >= max_items:
                     print(f"Reached limit of {max_items} records")
                     break
+                
+                if page >= total_pages:
+                    break
+                
+                page += 1
             
             self.collection = items
+            
+            # Save to cache
+            try:
+                cache_data = {
+                    'timestamp': datetime.now().isoformat(),
+                    'items': items
+                }
+                with open(cache_file, 'w') as f:
+                    json.dump(cache_data, f)
+                print(f"Collection cached ({len(items)} records)")
+            except Exception as e:
+                print(f"Cache write error: {e}")
+            
             return items
         except Exception as e:
             print(f"Error fetching collection: {e}")
