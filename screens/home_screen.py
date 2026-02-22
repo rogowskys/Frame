@@ -82,7 +82,8 @@ class HomeScreen(Screen):
     
     def on_collection_loaded(self):
         """Called when collection is loaded"""
-        app = self.manager.get_screen('home').get_root_window().children[0].app
+        from kivy.app import App
+        app = App.get_running_app()
         if app.discogs and app.discogs.collection:
             count = len(app.discogs.collection)
             username = app.discogs.username

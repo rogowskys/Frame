@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 class DiscogsService:
     def __init__(self, user_token, username, cache_dir='./cache'):
         self.client = discogs_client.Client('VinylCollectionApp/1.0', user_token=user_token)
+        self.user_token = user_token
         self.username = username
         self.cache_dir = cache_dir
         self.user = None
@@ -71,7 +72,7 @@ class DiscogsService:
                 params = {
                     'page': page,
                     'per_page': per_page,
-                    'token': self.client.user_token
+                    'token': self.user_token
                 }
                 
                 response = requests.get(url, params=params, timeout=30)
