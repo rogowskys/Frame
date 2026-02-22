@@ -10,6 +10,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
 from kivy.core.window import Window
 from kivy.clock import Clock
 import configparser
+import threading
 
 from discogs_service import DiscogsService
 from screens.home_screen import HomeScreen
@@ -86,9 +87,18 @@ class VinylApp(App):
             print("Please update config.ini with your Discogs credentials")
     
     def load_collection(self, dt):
-        """Load user's vinyl collection"""
+        """Load user's vinyl collection in background thread"""
         print("Loading collection...")
-        self.discogs.get_collection()
+        
+        def fetch_in_background():
+            self.discogs.get_collection()
+            Clock.schedule_once(self.on_collection_loaded, 0)
+        
+        thread = threading.Thread(target=fetch_in_background, daemon=True)
+        thread.start()
+    
+    def on_collection_loaded(self, dt):
+        """Called when collection loading is complete"""
         print(f"✓ Loaded {len(self.discogs.collection)} records")
         
         # Notify screens that collection is loaded

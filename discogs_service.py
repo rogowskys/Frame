@@ -31,7 +31,7 @@ class DiscogsService:
             print(f"Authentication error: {e}")
             return False
     
-    def get_collection(self, page=1, per_page=50):
+    def get_collection(self, page=1, per_page=50, max_items=None):
         """Fetch user's vinyl collection"""
         try:
             if not self.user:
@@ -40,6 +40,7 @@ class DiscogsService:
             collection = self.client.user(self.username).collection_folders[0].releases
             items = []
             
+            count = 0
             for release in collection:
                 items.append({
                     'id': release.release.id,
@@ -51,6 +52,12 @@ class DiscogsService:
                     'genres': release.release.genres if hasattr(release.release, 'genres') else [],
                     'styles': release.release.styles if hasattr(release.release, 'styles') else [],
                 })
+                count += 1
+                if count % 10 == 0:
+                    print(f"Loaded {count} records...")
+                if max_items and count >= max_items:
+                    print(f"Reached limit of {max_items} records")
+                    break
             
             self.collection = items
             return items

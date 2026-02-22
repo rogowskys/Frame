@@ -6,7 +6,6 @@ __pycache__/
 cache/
 *.jpg
 *.png
-config.ini
 venv/
 .env
 .DS_Store
